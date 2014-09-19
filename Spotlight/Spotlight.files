@@ -1,0 +1,8 @@
+index.html
+src/main.cpp
+src/NGLDraw.cpp
+include/NGLDraw.h
+Makefile
+shaders/SpotlightFrag.glsl
+shaders/SpotlightVert.glsl
+compiledfuncs.js

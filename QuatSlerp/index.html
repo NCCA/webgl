@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="chrome=1, IE=edge">
+<title>Quaternion</title>
+<meta name="keywords" content="MSc Computer Animation and Visual Effects,C++,WebGL,OpenGL,Graphics Library,Vecto
+r,Matrix,Camera">
+<link href="../../stylesheet.css" rel="stylesheet" type="text/css" media="all">
+<link href="../common/emscripten.css" rel="stylesheet" type="text/css" media="all">
+<link href="functions.css" rel="stylesheet" type="text/css" media="all">
+<script src="../jquery/js/jquery-1.10.2.js"></script>
+<script src="../jquery/js/jquery-ui-1.10.4.custom.js"></script>
+<script src="../jquery/js/jquery.layout-1.2.0.js"></script>
+
+<link href="../jquery/css/ui-lightness/jquery-ui-1.10.4.custom.css" rel="stylesheet">
+</head>
+<!-- Add in the java script functions for the UI -->
+<script type="text/javascript" src="functions.js"></script>
+</head><!--#include virtual="/jmacey/structure.inc" -->
+<div class="contentText">
+<body>
+<H1>Web NGL Quaternion <a href="http://en.wikipedia.org/wiki/Slerp">SLERP</a></H1>
+
+<table width="1000" border="0">
+
+    <td width="585" height="490">
+      <div class="emscripten">
+        <progress value="0" max="100" id="progress" hidden=1></progress>
+      </div>
+      <canvas class="emscripten" id="canvas" oncontextmenu="event.preventDefault()" width="300" height="200">
+      
+      </canvas>
+            <div class="emscripten" id="status">Downloading...</div>
+
+      <script type='text/javascript'>
+      var statusElement = document.getElementById('status');
+      var progressElement = document.getElementById('progress');
+      var spinnerElement = document.getElementById('spinner');
+
+      var Module = {
+        preRun: [],
+        postRun: [],
+        canvas: document.getElementById('canvas'),
+        setStatus: function(text)
+        {
+          if (!Module.setStatus.last) Module.setStatus.last = { time: Date.now(), text: '' };
+          if (text === Module.setStatus.text) return;
+          var m = text.match(/([^(]+)\((\d+(\.\d+)?)\/(\d+)\)/);
+          var now = Date.now();
+          if (m && now - Date.now() < 30) return; // if this is a progress update, skip it if too soon
+          if (m) {
+            text = m[1];
+            progressElement.value = parseInt(m[2])*100;
+            progressElement.max = parseInt(m[4])*100;
+            progressElement.hidden = false;
+            spinnerElement.hidden = false;
+          } else {
+            progressElement.value = null;
+            progressElement.max = null;
+            progressElement.hidden = true;
+            if (!text) spinnerElement.style.display = 'none';
+          }
+          statusElement.innerHTML = text;
+        },
+        totalDependencies: 0,
+        monitorRunDependencies: function(left) {
+          this.totalDependencies = Math.max(this.totalDependencies, left);
+          Module.setStatus(left ? 'Preparing... (' + (this.totalDependencies-left) + '/' + this.totalDependencies + ')' : 'All downloads complete.');
+        }
+      };
+      Module.setStatus('Downloading...');
+    </script>
+
+<!---      <script type="text/javascript" src="./WebNGL.js"></script>
+      </script></td>
+--->
+<script>
+    var decompressWorker = new Worker('../common/decompress.js');
+    var decompressCallbacks = [];
+    var decompressions = 0;
+    Module["decompress"] = function(data, callback) {
+      var id = decompressCallbacks.length;
+      decompressCallbacks.push(callback);
+      decompressWorker.postMessage({ data: data, id: id });
+      if (Module['setStatus']) {
+        decompressions++;
+        Module['setStatus']('Decompressing...');
+      }
+    };
+    decompressWorker.onmessage = function(event) {
+      decompressCallbacks[event.data.id](event.data.data);
+      decompressCallbacks[event.data.id] = null;
+      if (Module['setStatus']) {
+        decompressions--;
+        if (decompressions == 0) {
+          Module['setStatus']('');
+        }
+      }
+    };
+    var compiledCodeXHR = new XMLHttpRequest();
+    compiledCodeXHR.open('GET', 'WebNGL.js.compress', true);
+    compiledCodeXHR.responseType = 'arraybuffer';
+    compiledCodeXHR.onload = function() {
+      var arrayBuffer = compiledCodeXHR.response;
+      if (!arrayBuffer) throw('Loading compressed code failed.');
+      var byteArray = new Uint8Array(arrayBuffer);
+      Module.decompress(byteArray, function(decompressed) {
+        var source = Array.prototype.slice.apply(decompressed).map(function(x) { return String.fromCharCode(x) }).join(''); // createObjectURL instead?
+        var scriptTag = document.createElement('script');
+        scriptTag.setAttribute('type', 'text/javascript');
+        scriptTag.innerHTML = source;
+        document.body.appendChild(scriptTag);
+      });
+    };
+    compiledCodeXHR.send(null);
+</script>
+<td width="405" valign="top"><div >
+      <div><strong/>Start Rotation</div>
+      <table width="100" border="0">      
+          <td ><input id="startX" name="X" value="45.0"></td>
+          <td ><input id="startY" name="Y" value="90.0"></td>
+          <td ><input id="startZ" name="Z" value="80.0"></td>
+      </table>
+      <div>End Rotation</div>
+      <table width="100" border="0">        
+          <td ><input id="endX" name="X" value="-300.0"></td>
+          <td ><input id="endY" name="Y" value="270.0"></td>
+          <td ><input id="endZ" name="Z" value="360.0"></td>
+      </table>
+      <div>Start Quaternion </div>
+      <textarea class="startQuat" id="startQuat" rows="1" cols="50"></textarea>
+      <div>End Quaternion </div>
+      <textarea class="endQuat" id="endQuat" rows="1" cols="50"></textarea>
+      <div>Interpolated Quaternion </div>
+      <textarea class="interpQuat" id="interpQuat" rows="1" cols="50"></textarea>
+      <div>Rotation Matrix </div>
+      <textarea class="rotMatrix" id="rotMatrix" rows="4" cols="50"></textarea>
+      <div>Interpolate</div>
+      <div id="interpValue"></div>
+</table>
+</td>
+</table>
+</body>
+</html>

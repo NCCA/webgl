@@ -1,0 +1,108 @@
+precision mediump float;
+/// @file Colour.fs
+/// @brief a basic unshaded solid colour shader
+/// @brief the colour to shade draw with
+
+uniform vec4 Colour;
+
+void main ()
+{
+  gl_FragColor = Colour;
+}
+
+precision mediump float;
+/// @file Colour.vs
+/// @brief a basic unshaded solid colour shader used with Colour.fs
+
+/// @brief MVP matrix passed from our app
+uniform mat4 MVP;
+
+// first attribute the vertex values from our VAO
+attribute vec3 inVert;
+uniform vec4 Colour;
+
+void main(void)
+{
+// calculate the vertex position
+gl_Position = MVP*vec4(inVert, 1.0);
+}
+precision mediump float;
+/// modified from the OpenGL Shading Language Example "Orange Book"
+/// Roost 2002
+
+varying vec4 Colour;
+// for mac we need this
+//uniform sampler2DShadow ShadowMap;
+// for windows unix we need
+uniform sampler2D ShadowMap;
+
+varying vec4 ShadowCoord;
+
+
+void main ()
+{
+  float shadeFactor=texture2DProj(ShadowMap,ShadowCoord).x;
+        shadeFactor=shadeFactor;// * 0.25 + 0.75;
+  gl_FragColor=vec4(1.0);//shadeFactor * Colour.rgb, Colour.a);
+}
+precision mediump float;
+/// modified from the OpenGL Shading Language Example "Orange Book"
+/// Roost 2002
+
+uniform mat4 MV;
+uniform mat4 MVP;
+uniform mat3 normalMatrix;
+uniform mat4 textureMatrix;
+uniform vec3 LightPosition;
+uniform vec4  inColour;
+
+
+attribute  vec4  inVert;
+attribute vec2 inUV;
+attribute  vec3  inNormal;
+varying vec4  ShadowCoord;
+varying vec4  Colour;
+void main()
+{
+	vec4 ecPosition = MV * inVert;
+	vec3 ecPosition3 = (vec3(ecPosition)) / ecPosition.w;
+	vec3 VP = LightPosition - ecPosition3;
+	VP = normalize(VP);
+	vec3 normal = normalize(normalMatrix * inNormal);
+	float diffuse = max(0.0, dot(normal, VP));
+	vec4 texCoord = textureMatrix * inVert;
+	ShadowCoord   = texCoord;
+	Colour  = vec4(diffuse * inColour.rgb, inColour.a);
+	gl_Position    = MVP * inVert;
+}
+
+precision mediump float;
+// this is a pointer to the current 2D texture object
+uniform sampler2D tex;
+// the vertex UV
+varying vec2 vertUV;
+void main ()
+{
+ // set the fragment colour to the current texture
+ gl_FragColor = vec4(texture2D(tex,vertUV).r);
+}
+precision mediump float;
+
+/// @brief MVP passed from app
+uniform mat4 MVP;
+// first attribute the vertex values from our VAO
+attribute vec3 inVert;
+// second attribute the UV values from our VAO
+attribute vec2 inUV;
+// we use this to pass the UV values to the frag shader
+varying vec2 vertUV;
+
+void main(void)
+{
+// pre-calculate for speed we will use this a lot
+
+// calculate the vertex position
+gl_Position = MVP*vec4(inVert, 1.0);
+// pass the UV values to the frag shader
+vertUV=inUV.st;
+}

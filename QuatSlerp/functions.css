@@ -1,0 +1,19 @@
+#interpValue
+{
+	clear: left;
+	width: 350px;
+	margin: 15px;
+} 
+
+#startX, #startY, #startZ,#endX, #endY, #endZ
+{
+	float: left;
+	clear: left;
+	width: 100px;
+	margin: 10px;
+} 
+#startQuat,#endQuat,#rotMatrix,#interpQuat
+{
+	width: 350px;
+	margin: 10px;
+} 

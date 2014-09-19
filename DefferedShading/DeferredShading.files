@@ -1,0 +1,12 @@
+index.html
+src/main.cpp
+src/NGLDraw.cpp
+src/PointLight.cpp
+src/ScreenQuad.cpp
+include/NGLDraw.h
+include/PointLight.cpp
+include/ScreenQuad.cpp
+Makefile
+shaders/PhongFragment.glsl
+shaders/PhongVertex.glsl
+compiledfuncs.js

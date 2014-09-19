@@ -1,0 +1,11 @@
+index.html
+src/main.cpp
+src/NGLDraw.cpp
+src/AIUtil.cpp
+src/Mesh.cpp
+include/Mesh.h
+include/AIUtil.h
+include/NGLDraw.h
+Makefile
+shaders/SkinningFragment.glsl
+shaders/SkinningVertex.glsl

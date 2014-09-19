@@ -1,0 +1,434 @@
+#version 400 core
+
+uniform sampler2D pointTex;
+uniform sampler2D normalTex;
+uniform sampler2D colourTex;
+uniform sampler2D lightPassTex;
+uniform sampler2D diffuseTex;
+
+in vec2 vertUV;
+layout (location =0) out vec4 fragColour;
+uniform int mode;
+uniform vec3 cam;
+
+
+void main()
+{
+
+  vec4 point=texture(pointTex,vertUV);
+  vec4 normal=texture(normalTex,vertUV);
+  vec4 colour=texture(colourTex,vertUV);
+  vec4 final=texture(lightPassTex,vertUV);
+  vec4 diffuse=texture(diffuseTex,vertUV);
+  switch(mode)
+  {
+    case 0:
+        fragColour=colour;//colour*max(dot(normal,point),0.0);
+    break;
+  case 1:
+      fragColour=point;//colour*max(dot(normal,point),0.0);
+  break;
+  case 2:
+      fragColour=normalize(normal);//colour*max(dot(normal,point),0.0);
+  break;
+
+  case 3:
+
+//    vec3 light = vec3(2,2,2);
+//    vec3 lightDir = light - point.xyz ;
+
+//    normal = normalize(normal);
+//    lightDir = normalize(lightDir);
+
+//    vec3 eyeDir = normalize(cam-point.xyz);
+//    vec3 vHalfVector = normalize(lightDir.xyz+eyeDir);
+//      fragColour.rgb = max(dot(normal.xyz,lightDir),0) * colour.rgb +
+//                     pow(max(dot(normal.xyz,vHalfVector),0.0), 3) * 1.5;
+      fragColour=diffuse;
+    break;
+
+   case 4 :
+        vec3 light = vec3(2,2,2);
+        vec3 lightDir = light - point.xyz ;
+
+        normal = normalize(normal);
+        lightDir = normalize(lightDir);
+
+        vec3 eyeDir = normalize(cam-point.xyz);
+        vec3 vHalfVector = normalize(lightDir.xyz+eyeDir);
+          fragColour.rgb = max(dot(normal.xyz,lightDir),0) * colour.rgb +
+                         pow(max(dot(normal.xyz,vHalfVector),0.0), 3) * 1.5;
+    break;
+
+  }
+}
+#version 400 core
+
+// first attribute the vertex values from our VAO
+layout (location = 0) in vec3 inVert;
+// second attribute the UV values from our VAO
+layout (location = 1) in vec2 inUV;
+// we use this to pass the UV values to the frag shader
+out vec2 vertUV;
+void main()
+{
+// pre-calculate for speed we will use this a lot
+
+    // calculate the vertex position
+    gl_Position = vec4(inVert, 1.0);
+    // pass the UV values to the frag shader
+    vertUV=inUV.st;
+}
+#version 400 core
+
+uniform sampler2D pointTex;
+uniform sampler2D normalTex;
+uniform sampler2D colourTex;
+uniform vec3 lightPos;
+uniform mat4 V;
+layout (location=0)out vec3 lightPassTex;
+
+uniform vec3 cam;
+uniform vec2 wh;
+
+void main()
+{
+  vec2 st;
+ st.s = gl_FragCoord.x / wh.x;
+ st.t = gl_FragCoord.y / wh.y;
+
+  vec4 point=texture(pointTex,st);
+  vec4 normal=texture(normalTex,st);
+  vec4 colour=texture(colourTex,st);
+  if (point.z > -0.0001) {
+     discard;
+   }
+  vec3 lightDir = lightPos - point.xyz ;
+
+  normal = normalize(normal);
+  lightDir = normalize(lightDir);
+  lightPassTex=vec3(0.0);
+  vec3 eyeDir = normalize(cam-point.xyz);
+  vec3 vHalfVector = normalize(lightDir.xyz+eyeDir);
+    lightPassTex = max(dot(normal.xyz,lightDir),0) * colour.rgb +
+                   pow(max(dot(normal.xyz,vHalfVector),0.0), 3) * 1.5;
+
+}
+#version 400 core
+// first attribute the vertex values from our VAO
+layout (location = 0) in vec3 inVert;
+uniform mat4 MVP;
+void main()
+{
+// pre-calculate for speed we will use this a lot
+
+    // calculate the vertex position
+    gl_Position = MVP*vec4(inVert, 1.0);
+}
+#version 400 core
+
+in vec3 point;
+in vec3 normal;
+in vec3 colour;
+in vec3 zdepth;
+layout (location=0)out vec3 pointDeferred;
+layout (location=1)out vec3 normalDeferred;
+layout (location=2)out vec3 colourDeferred;
+layout (location=3)out vec3 shadingDeferred;
+uniform vec3 cam;
+
+void main ()
+{
+  pointDeferred = point;
+  normalDeferred = normal;
+  colourDeferred= colour;
+
+//  float ndcDepth =
+//      (2.0 * gl_FragCoord.z - gl_DepthRange.near - gl_DepthRange.far) /
+//      (gl_DepthRange.far - gl_DepthRange.near);
+  vec3 light = vec3(2,2,2);
+  vec3 lightDir = light - point.xyz ;
+
+  vec3 N = normalize(normal);
+  lightDir = normalize(lightDir);
+
+  vec3 eyeDir = normalize(cam-point.xyz);
+  vec3 vHalfVector = normalize(lightDir.xyz+eyeDir);
+    shadingDeferred = max(dot(N,lightDir),0) * colour.rgb +
+                   pow(max(dot(N,vHalfVector),0.0), 3) * 1.5;
+
+  //lightPassTex=vec3(gl_FragCoord.z * 2.0 - 1.0 );
+
+
+
+}
+#version 400 core
+
+/// @brief the vertex passed in
+layout (location = 0) in vec3 inVert;
+/// @brief the normal passed in
+layout (location = 2) in vec3 inNormal;
+/// @brief the in uv
+layout (location = 1) in vec2 inUV;
+
+uniform mat4 MVP;
+uniform mat4 MV;
+uniform mat4 M;
+uniform vec3 Colour;
+out vec3 point;
+out vec3 normal;
+out vec3 colour;
+//out vec3 zdepth;
+
+void main ()
+{
+  point = ((MV * vec4 (inVert, 1.0)).xyz);
+// may have to take into account normal matrix as well
+  normal = normalize((MV * vec4 (inNormal, 0.0)).xyz);
+  colour=Colour;
+  gl_Position = MVP * vec4 (inVert, 1.0);
+ // zdepth=vec3(gl_FragCoord.z);
+}
+#version 400 core
+
+uniform sampler2D pointTex;
+uniform sampler2D normalTex;
+uniform sampler2D colourTex;
+uniform vec3 lightPos;
+uniform mat4 V;
+in vec2 vertUV;
+layout (location =0) out vec4 fragColour;
+const vec3 kd = vec3 (1.0, 1.0, 1.0);
+const vec3 ks = vec3 (1.0, 1.0, 1.0);
+const float specular_exponent = 100.0;
+const vec3 ld = vec3(1.0,1.0,1.0);
+const vec3 ls = vec3(1.0,1.0,1.0);
+
+
+vec3 phong (in vec3 p_eye, in vec3 n_eye, in vec3 colour)
+{
+  vec3 light_position_eye = vec3 (V * vec4 (lightPos, 1.0));
+  vec3 dist_to_light_eye = light_position_eye - p_eye;
+  vec3 direction_to_light_eye = normalize (dist_to_light_eye);
+
+  // standard diffuse light
+  float dot_prod = max (dot (direction_to_light_eye,  n_eye), 0.0);
+  vec3 Id = ld * kd * dot_prod; // final diffuse intensity
+  /*
+  // standard specular light
+  vec3 reflection_eye = reflect (-direction_to_light_eye, n_eye);
+  vec3 surface_to_viewer_eye = normalize (-p_eye);
+  float dot_prod_specular = dot (reflection_eye, surface_to_viewer_eye);
+  dot_prod_specular = max (dot_prod_specular, 0.0);
+  float specular_factor = pow (dot_prod_specular, specular_exponent);
+  vec3 Is = ls * ks * specular_factor; // final specular intensity
+
+  // attenuation (fade out to sphere edges)
+  float dist_2d = distance (light_position_eye, p_eye);
+  float atten_factor = -log (min (1.0, dist_2d / 5.0));
+
+  return (Id + Is) * atten_factor;
+  */
+  return Id*colour;
+}
+
+
+
+void main()
+{
+  vec2 st;
+   st.s = gl_FragCoord.x / 1024.0/2.0;
+   st.t = gl_FragCoord.y / 720.0/2.0;
+
+  vec4 point=texture(pointTex,st);
+  vec4 normal=texture(normalTex,st);
+  vec4 colour=texture(colourTex,st);
+
+  // skip background
+   if (point.z > -0.0001) {
+     discard;
+   }
+
+fragColour.rgb = phong(point.rgb, normalize (normal).rgb,colour.rgb);
+// fragColour=colour;//colour*max(dot(normal,point),0.0);
+fragColour.a=1.0;
+///fragColour=point;
+}
+#version 400 core
+
+// first attribute the vertex values from our VAO
+layout (location = 0) in vec3 inVert;
+// second attribute the UV values from our VAO
+layout (location = 1) in vec2 inUV;
+// we use this to pass the UV values to the frag shader
+out vec2 vertUV;
+uniform mat4 MVP;
+void main()
+{
+// pre-calculate for speed we will use this a lot
+
+    // calculate the vertex position
+    gl_Position = MVP*vec4(inVert.xyz, 1.0);
+    // pass the UV values to the frag shader
+    vertUV=inUV.st;
+}
+precision mediump float;
+
+varying vec3 fragmentNormal;
+/// @brief material structure
+struct Materials
+{
+  vec4 ambient;
+  vec4 diffuse;
+  vec4 specular;
+  float shininess;
+};
+
+// @brief light structure
+struct Lights
+{
+  vec4 position;
+  vec4 ambient;
+  vec4 diffuse;
+  vec4 specular;
+  float constantAttenuation;
+  float spotCosCutoff;
+  float quadraticAttenuation;
+  float linearAttenuation;
+};
+// @param material passed from our program
+uniform Materials material;
+
+uniform Lights light;
+varying vec3 lightDir;
+// out the blinn half vector
+varying vec3 halfVector;
+varying vec3 eyeDirection;
+varying vec3 vPosition;
+
+/// @brief a function to compute point light values
+/// @param[in] _light the number of the current light
+
+vec4 pointLight()
+{
+  vec3 N = normalize(fragmentNormal);
+  vec3 halfV;
+  float ndothv;
+  float attenuation;
+  vec3 E = normalize(eyeDirection);
+  vec3 L = normalize(lightDir);
+  float lambertTerm = dot(N,L);
+  vec4 diffuse=vec4(0);
+  vec4 ambient=vec4(0);
+  vec4 specular=vec4(0);
+  if (lambertTerm > 0.0)
+  {
+  float d;            // distance from surface to light position
+  vec3 VP;            // direction from surface to light position
+
+  // Compute vector from surface to light position
+  VP = vec3 (light.position) - vPosition;
+
+  // Compute distance between surface and light position
+    d = length (VP);
+
+
+    diffuse+=material.diffuse*light.diffuse*lambertTerm;
+    ambient+=material.ambient*light.ambient;
+    halfV = normalize(halfVector);
+    ndothv = max(dot(N, halfV), 0.0);
+    specular+=material.specular*light.specular*pow(ndothv, material.shininess);
+  }
+return ambient + diffuse + specular;
+}
+
+
+
+void main ()
+{
+
+gl_FragColor=pointLight();
+}
+
+precision mediump float;
+/// @brief the vertex passed in
+attribute  vec3 inVert;
+/// @brief the normal passed in
+attribute  vec3 inNormal;
+/// @brief the in uv
+attribute  vec2 inUV;
+/// @brief  to indicate if model has unit normals if not normalize
+uniform bool Normalize;
+// the eye position of the camera
+uniform vec3 viewerPos;
+/// @brief the current fragment normal for the vert being processed
+varying vec3 fragmentNormal;
+
+
+struct Materials
+{
+  vec4 ambient;
+  vec4 diffuse;
+  vec4 specular;
+  float shininess;
+};
+
+
+struct Lights
+{
+  vec4 position;
+  vec4 ambient;
+  vec4 diffuse;
+  vec4 specular;
+  float constantAttenuation;
+  float spotCosCutoff;
+  float quadraticAttenuation;
+  float linearAttenuation;
+};
+// our material
+uniform Materials material;
+// array of lights
+uniform Lights light;
+// direction of the lights used for shading
+varying vec3 lightDir;
+// out the blinn half vector
+varying vec3 halfVector;
+varying vec3 eyeDirection;
+varying vec3 vPosition;
+
+uniform mat4 MV;
+uniform mat4 MVP;
+uniform mat3 normalMatrix;
+uniform mat4 M;
+
+
+void main()
+{
+// calculate the fragments surface normal
+fragmentNormal = (normalMatrix*inNormal);
+
+
+if (Normalize == true)
+{
+ fragmentNormal = normalize(fragmentNormal);
+}
+// calculate the vertex position
+gl_Position = MVP*vec4(inVert,1.0);
+
+vec4 worldPosition = M * vec4(inVert, 1.0);
+eyeDirection = normalize(viewerPos - worldPosition.xyz);
+// Get vertex position in eye coordinates
+// Transform the vertex to eye co-ordinates for frag shader
+/// @brief the vertex in eye co-ordinates  homogeneous
+vec4 eyeCord=MV*vec4(inVert,1);
+
+vPosition = eyeCord.xyz / eyeCord.w;;
+
+float dist;
+
+lightDir=vec3(light.position.xyz-eyeCord.xyz);
+dist = length(lightDir);
+lightDir/= dist;
+halfVector = normalize(eyeDirection + lightDir);
+
+}

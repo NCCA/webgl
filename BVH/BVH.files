@@ -1,0 +1,12 @@
+index.html
+src/main.cpp
+src/NGLDraw.cpp
+src/Scene.cpp
+src/BVH.cpp
+include/Scene.h
+include/BVH.h
+include/NGLDraw.h
+Makefile
+shaders/PhongFragment.glsl
+shaders/PhongVertex.glsl
+compiledfuncs.js

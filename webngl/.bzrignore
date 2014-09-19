@@ -1,0 +1,4 @@
+WebNGL.creator.user
+*.o
+.qmake.cache
+.qmake.stash

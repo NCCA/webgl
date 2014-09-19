@@ -1,0 +1,4 @@
+WebNGL.*
+*.compress
+.qmake.stash
+SimpleNGL.creator.user

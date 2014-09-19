@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+	<meta http-equiv="X-UA-Compatible" content="chrome=1, IE=edge">
+	<title>Morph Object</title>
+	<meta name="keywords" content="MSc Computer Animation and Visual Effects,C++,WebGL,OpenGL,Graphics Library,Vecto
+r,Matrix,Camera,emscripten">
+  <link href="../../stylesheet.css" rel="stylesheet" type="text/css" media="all"></head>
+</head>
+ <!--#include virtual="/jmacey/structure.inc" -->
+<div class="contentText">
+  <body>
+      <H1>Web NGL Ray -> Sphere Collision Detection</H1>
+  <pre>Space->Pause r-> change spheres Mouse->Tumble</pre>
+    <hr/>
+    <div class="spinner" id='spinner'></div>
+    <div class="emscripten" id="status">Downloading...</div>
+
+
+
+    <div class="emscripten">
+      <progress value="0" max="100" id="progress" hidden=1></progress>
+    </div>
+
+
+    <div class="emscripten_border">
+      <canvas class="emscripten" id="canvas" oncontextmenu="event.preventDefault()"></canvas>
+    </div>
+    <textarea id="output" rows="8" cols="100"></textarea>
+
+    <script type='text/javascript'>
+      var statusElement = document.getElementById('status');
+      var progressElement = document.getElementById('progress');
+      var spinnerElement = document.getElementById('spinner');
+
+      var Module = {
+        preRun: [],
+        postRun: [],
+        print: (function() {
+          var element = document.getElementById('output');
+          element.value = ''; // clear browser cache
+          return function(text) {
+            text = Array.prototype.slice.call(arguments).join(' ');
+            // These replacements are necessary if you render to raw HTML
+            //text = text.replace(/&/g, "&amp;");
+            //text = text.replace(/</g, "&lt;");
+            //text = text.replace(/>/g, "&gt;");
+            //text = text.replace('\n', '<br>', 'g');
+            element.value += text + "\n";
+            element.scrollTop = element.scrollHeight; // focus on bottom
+          };
+        })(),
+        printErr: function(text) {
+          text = Array.prototype.slice.call(arguments).join(' ');
+          if (0) { // XXX disabled for safety typeof dump == 'function') {
+            dump(text + '\n'); // fast, straight to the real console
+          } else {
+            console.log(text);
+          }
+        },
+        canvas: document.getElementById('canvas'),
+        setStatus: function(text) {
+          if (!Module.setStatus.last) Module.setStatus.last = { time: Date.now(), text: '' };
+          if (text === Module.setStatus.text) return;
+          var m = text.match(/([^(]+)\((\d+(\.\d+)?)\/(\d+)\)/);
+          var now = Date.now();
+          if (m && now - Date.now() < 30) return; // if this is a progress update, skip it if too soon
+          if (m) {
+            text = m[1];
+            progressElement.value = parseInt(m[2])*100;
+            progressElement.max = parseInt(m[4])*100;
+            progressElement.hidden = false;
+            spinnerElement.hidden = false;
+          } else {
+            progressElement.value = null;
+            progressElement.max = null;
+            progressElement.hidden = true;
+            if (!text) spinnerElement.style.display = 'none';
+          }
+          statusElement.innerHTML = text;
+        },
+        totalDependencies: 0,
+        monitorRunDependencies: function(left) {
+          this.totalDependencies = Math.max(this.totalDependencies, left);
+          Module.setStatus(left ? 'Preparing... (' + (this.totalDependencies-left) + '/' + this.totalDependencies + ')' : 'All downloads complete.');
+        }
+      };
+      Module.setStatus('Downloading...');
+    </script>
+    <script>
+        var decompressWorker = new Worker('decompress.js');
+        var decompressCallbacks = [];
+        var decompressions = 0;
+        Module["decompress"] = function(data, callback) {
+          var id = decompressCallbacks.length;
+          decompressCallbacks.push(callback);
+          decompressWorker.postMessage({ data: data, id: id });
+          if (Module['setStatus']) {
+            decompressions++;
+            Module['setStatus']('Decompressing...');
+          }
+        };
+        decompressWorker.onmessage = function(event) {
+          decompressCallbacks[event.data.id](event.data.data);
+          decompressCallbacks[event.data.id] = null;
+          if (Module['setStatus']) {
+            decompressions--;
+            if (decompressions == 0) {
+              Module['setStatus']('');
+            }
+          }
+        };
+        var compiledCodeXHR = new XMLHttpRequest();
+        compiledCodeXHR.open('GET', 'WebNGL.js.compress', true);
+        compiledCodeXHR.responseType = 'arraybuffer';
+        compiledCodeXHR.onload = function() {
+          var arrayBuffer = compiledCodeXHR.response;
+          if (!arrayBuffer) throw('Loading compressed code failed.');
+          var byteArray = new Uint8Array(arrayBuffer);
+          Module.decompress(byteArray, function(decompressed) {
+            var source = Array.prototype.slice.apply(decompressed).map(function(x) { return String.fromCharCode(x) }).join(''); // createObjectURL instead?
+            var scriptTag = document.createElement('script');
+            scriptTag.setAttribute('type', 'text/javascript');
+            scriptTag.innerHTML = source;
+            document.body.appendChild(scriptTag);
+          });
+        };
+        compiledCodeXHR.send(null);
+</script>
+</body>
+
+
+
+
+</html>
